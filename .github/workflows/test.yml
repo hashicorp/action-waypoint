@@ -1,0 +1,35 @@
+name: 'deploy-test'
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      with:
+        version: '0.0.1-beta1'
+        github_token: ''
+        waypoint_server_address: 'host.docker.internal:9701'
+        waypoint_server_token: ''
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          npm install
+      - run: |
+          npm run all
+      - uses: ./
+      - uses: ./
+        name: Build
+        with:
+          operation: build
+          workspace: ${{ github.ref }}
+      - uses: ./
+        name: Build
+        with:
+          operation: deploy
+          workspace: ${{ github.ref }}
+      - uses: ./
+        name: Release
+        if: ${{ github.ref == 'refs/heads/master' }}
+        with:
+          operation: release
+          workspace: ${{ github.ref }}
