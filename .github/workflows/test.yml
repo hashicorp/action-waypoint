@@ -1,0 +1,27 @@
+name: 'deploy-test'
+on: # rebuild any PRs and main branch changes
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'releases/*'
+
+jobs:
+  deploy: # make sure build/ci work properly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          npm install
+      - run: |
+          npm run all
+  test: # make sure the action works on a clean machine without building
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./
+        with:
+          version: '0.0.1-beta1'
+          github_token: ''
+          waypoint_server_address: 'host.docker.internal:9701'
+          waypoint_server_token: 'bM152PWkXxfoy4vA51JFhR7LpEiGiykqZh7ZCCoP3tHwfqLV3wJrE7XKeXghDpWqJXWUPsUJXxKCqXvJvo2dmmtu6advERBCpS5G4'

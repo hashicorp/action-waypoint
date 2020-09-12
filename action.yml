@@ -1,0 +1,23 @@
+name: 'action-waypoint'
+description: 'Provide a description here'
+author: 'Your name or organization here'
+inputs:
+  version:
+    required: true
+    description: 'input description here'
+    default: '0.1.0'
+  github_token:
+    required: true
+    description: 'input description here'
+    default: ''
+  waypoint_server_token:
+    required: true
+    description: 'input description here'
+    default: ''
+  waypoint_server_address:
+    required: true
+    description: 'input description here'
+    default: ''
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
