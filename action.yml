@@ -1,0 +1,11 @@
+name: 'action-waypoint'
+description: 'Provide a description here'
+author: 'Your name or organization here'
+inputs:
+  github_token: # change this
+    required: true
+    description: 'input description here'
+    default: 'foobar'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
