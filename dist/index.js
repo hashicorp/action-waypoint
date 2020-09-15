@@ -7806,7 +7806,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.run = exports.PRODUCT_NAME = void 0;
 const core = __importStar(__webpack_require__(186));
 const github = __importStar(__webpack_require__(438));
-const exec_1 = __webpack_require__(514);
 const setup_1 = __webpack_require__(391);
 const setup = __importStar(__webpack_require__(391));
 const handler = __importStar(__webpack_require__(201));
@@ -7837,13 +7836,11 @@ function run() {
             const payload = github.context.payload;
             // Get the second argument to the script. If none is supplied it will return
             const operation = core.getInput('operation');
-            core.info(`PATH IS ${process.cwd()}`);
-            yield exec_1.exec('ls', ['-lah']);
             if (operation === 'build') {
                 yield handler.handleBuild(ctx, payload);
             }
             else if (operation === 'deploy') {
-                //
+                yield handler.handleDeploy(ctx, payload);
             }
             else if (operation === 'release') {
                 //
@@ -21818,51 +21815,65 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleDeploy = exports.handleBuild = exports.initWaypoint = exports.handleRelease = exports.getCliOptions = void 0;
 const exec_1 = __webpack_require__(514);
 const LABEL_PREFIX = 'common';
-// with 6000 ms timeout, 10m
-// const POLL_INTERVAL = 6000;
-// const POLL_MAX_CHECKS = 100;
-// async function updateCommitStatus(ctx: Ctx, sha: string, status: Status): Promise<void> {
-//   // The GitHub state
-//   let state: githubState;
-//   enum githubState {
-//     Error = 'error',
-//     Pending = 'pending',
-//     Success = 'success',
-//     Failure = 'failure',
-//   }
-//   // Unfortunately have to do this as we cannot just pass a string value to
-//   // the commit status API
-//   let description = '';
-//   switch (status.getState()) {
-//     case Status.State.ERROR: {
-//       state = githubState.Error;
-//       description = 'An error occurred';
-//       break;
-//     }
-//     case Status.State.UNKNOWN: {
-//       state = githubState.Pending;
-//       description = 'The current state of the operation is not known';
-//       break;
-//     }
-//     case Status.State.RUNNING: {
-//       state = githubState.Pending;
-//       description = 'The operation is currently running';
-//       break;
-//     }
-//     case Status.State.SUCCESS: {
-//       state = githubState.Success;
-//       description = 'The operation was successful';
-//       break;
-//     }
-//   }
-//   await ctx.octokit.request('POST /repos/:owner/:repo/statuses/:sha', {
-//     owner: ctx.context.repo.owner,
-//     repo: ctx.context.repo.repo,
-//     sha,
-//     state,
-//     description,
-//   });
-// }
+// The GitHub state, unfortunately have to do this as we cannot just pass a string value to
+// the commit status API
+var githubState;
+(function (githubState) {
+    githubState["Error"] = "error";
+    githubState["Pending"] = "pending";
+    githubState["Success"] = "success";
+    githubState["Failure"] = "failure";
+})(githubState || (githubState = {}));
+function updateCommitStatus(ctx, sha, status, url) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let description = '';
+        let state = githubState.Pending;
+        switch (status) {
+            case githubState.Error: {
+                state = githubState.Error;
+                description = 'An error occurred';
+                break;
+            }
+            case githubState.Pending: {
+                state = githubState.Pending;
+                description = 'The current state of the operation is not known';
+                break;
+            }
+            case githubState.Success: {
+                state = githubState.Success;
+                description = 'The operation was successful';
+                break;
+            }
+        }
+        try {
+            yield ctx.octokit.request('POST /repos/:owner/:repo/statuses/:sha', {
+                owner: ctx.context.repo.owner,
+                repo: ctx.context.repo.repo,
+                sha,
+                state,
+                url,
+            });
+        }
+        catch (e) {
+            throw new Error(`failed to create deployment ${e}`);
+        }
+    });
+}
+function createDeployment(ctx, sha) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            yield ctx.octokit.request('POST /repos/:owner/:repo/deployments', {
+                owner: ctx.context.repo.owner,
+                repo: ctx.context.repo.repo,
+                ref: sha,
+                environment: ctx.workspace,
+            });
+        }
+        catch (e) {
+            throw new Error(`failed to create deployment ${e}`);
+        }
+    });
+}
 // async function updateDeployStatusForRun(ctx: Ctx, workspace: string): Promise<boolean> {
 //   // Get the deployment from Waypoint using the git sha label to identify it
 //   const req = new ListDeploymentsRequest();
@@ -21958,6 +21969,8 @@ exports.initWaypoint = initWaypoint;
 function handleBuild(ctx, payload) {
     return __awaiter(this, void 0, void 0, function* () {
         const waypointOptions = yield getCliOptions(ctx, payload);
+        // Set status to pending
+        yield updateCommitStatus(ctx, payload.after, githubState.Pending);
         // Run init
         yield initWaypoint(ctx);
         // Run the build
@@ -21968,14 +21981,20 @@ function handleBuild(ctx, payload) {
             }
         }
         catch (e) {
+            // Set status to error
+            yield updateCommitStatus(ctx, payload.after, githubState.Error);
             throw new Error(`build failed: ${e}`);
         }
+        // Set status to success
+        yield updateCommitStatus(ctx, payload.after, githubState.Success);
     });
 }
 exports.handleBuild = handleBuild;
 function handleDeploy(ctx, payload) {
     return __awaiter(this, void 0, void 0, function* () {
         const waypointOptions = yield getCliOptions(ctx, payload);
+        // Set status to pending
+        yield updateCommitStatus(ctx, payload.after, githubState.Pending);
         // Run init
         yield initWaypoint(ctx);
         // Run the deploy
@@ -21986,8 +22005,22 @@ function handleDeploy(ctx, payload) {
             }
         }
         catch (e) {
+            yield updateCommitStatus(ctx, payload.after, githubState.Error);
             throw new Error(`deploy failed: ${e}`);
         }
+        const options = { silent: true, failOnStdErr: true };
+        options.listeners = {
+            stdout: (data) => {
+                process.stdout.write(data);
+            },
+            stderr: (data) => {
+                process.stderr.write(data);
+            },
+        };
+        // Update the commit status
+        yield updateCommitStatus(ctx, payload.after, githubState.Success);
+        // Create a github deployment
+        yield createDeployment(ctx, payload.after);
         // Run the deploy, we want to do this async and wait for the remote status
         // exec('waypoint', ['deploy', ...waypointOptions]).then((code) => {
         //   if (code !== 0) {
@@ -32663,7 +32696,7 @@ class Ctx {
         core.exportVariable('WAYPOINT_SERVER_TLS_SKIP_VERIFY', '1');
         core.exportVariable('WAYPOINT_LOG_LEVEL', 'info');
         // Ensure the Waypoint token is masked from logs
-        // core.setSecret(waypointToken);
+        core.setSecret(this.waypointToken);
         // const creds = createPerRpcChannelCredentials(waypointToken);
         // this.waypoint = new WaypointClient(waypointAddress, creds);
     }
@@ -32687,16 +32720,15 @@ function createPerRpcChannelCredentials(token) {
 exports.createPerRpcChannelCredentials = createPerRpcChannelCredentials;
 function validateWaypoint() {
     return __awaiter(this, void 0, void 0, function* () {
-        core.info('Checking Waypoint Version');
+        const options = { silent: true };
+        core.info('validating Waypoint installation');
         // Output the version
-        const versionCode = yield exec_1.exec('waypoint', ['version']);
+        const versionCode = yield exec_1.exec('waypoint', ['version'], options);
         if (versionCode !== 0) {
             throw new Error(`Attempt to output Waypoint version failed (exit code ${versionCode}). Waypoint may not be installed. Please
 see instructions in the REAMDE for utilizing the setup-waypoint action.`);
         }
-        core.info('Checking Waypoint Status');
         let statusError = '';
-        const options = {};
         options.listeners = {
             stdout: () => {
                 // Do nothing. We do not want to show the status output and only

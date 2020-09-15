@@ -45,7 +45,7 @@ export class Ctx {
     core.exportVariable('WAYPOINT_LOG_LEVEL', 'info');
 
     // Ensure the Waypoint token is masked from logs
-    // core.setSecret(waypointToken);
+    core.setSecret(this.waypointToken);
 
     // const creds = createPerRpcChannelCredentials(waypointToken);
     // this.waypoint = new WaypointClient(waypointAddress, creds);
@@ -71,9 +71,12 @@ export function createPerRpcChannelCredentials(token: string): ChannelCredential
 }
 
 export async function validateWaypoint(): Promise<void> {
-  core.info('Checking Waypoint Version');
+  const options: ExecOptions = { silent: true };
+
+  core.info('validating Waypoint installation');
+
   // Output the version
-  const versionCode = await exec('waypoint', ['version']);
+  const versionCode = await exec('waypoint', ['version'], options);
 
   if (versionCode !== 0) {
     throw new Error(
@@ -82,11 +85,7 @@ see instructions in the REAMDE for utilizing the setup-waypoint action.`
     );
   }
 
-  core.info('Checking Waypoint Status');
-
   let statusError = '';
-
-  const options: ExecOptions = {};
   options.listeners = {
     stdout: () => {
       // Do nothing. We do not want to show the status output and only

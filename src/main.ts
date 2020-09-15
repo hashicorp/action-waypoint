@@ -42,13 +42,10 @@ export async function run(): Promise<void> {
     // Get the second argument to the script. If none is supplied it will return
     const operation = core.getInput('operation');
 
-    core.info(`PATH IS ${process.cwd()}`);
-    await exec('ls', ['-lah']);
-
     if (operation === 'build') {
       await handler.handleBuild(ctx, payload);
     } else if (operation === 'deploy') {
-      //
+      await handler.handleDeploy(ctx, payload);
     } else if (operation === 'release') {
       //
     }

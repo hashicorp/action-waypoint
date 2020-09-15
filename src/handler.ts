@@ -1,58 +1,66 @@
 import { EventPayloads } from '@octokit/webhooks';
 import { Ctx } from './setup';
 
-import { exec } from '@actions/exec';
+import { exec, ExecOptions } from '@actions/exec';
 
 const LABEL_PREFIX = 'common';
 
-// with 6000 ms timeout, 10m
-// const POLL_INTERVAL = 6000;
-// const POLL_MAX_CHECKS = 100;
+// The GitHub state, unfortunately have to do this as we cannot just pass a string value to
+// the commit status API
+enum githubState {
+  Error = 'error',
+  Pending = 'pending',
+  Success = 'success',
+  Failure = 'failure',
+}
 
-// async function updateCommitStatus(ctx: Ctx, sha: string, status: Status): Promise<void> {
-//   // The GitHub state
-//   let state: githubState;
-//   enum githubState {
-//     Error = 'error',
-//     Pending = 'pending',
-//     Success = 'success',
-//     Failure = 'failure',
-//   }
+async function updateCommitStatus(ctx: Ctx, sha: string, status: githubState, url?: string): Promise<void> {
+  let description = '';
+  let state = githubState.Pending;
 
-//   // Unfortunately have to do this as we cannot just pass a string value to
-//   // the commit status API
-//   let description = '';
-//   switch (status.getState()) {
-//     case Status.State.ERROR: {
-//       state = githubState.Error;
-//       description = 'An error occurred';
-//       break;
-//     }
-//     case Status.State.UNKNOWN: {
-//       state = githubState.Pending;
-//       description = 'The current state of the operation is not known';
-//       break;
-//     }
-//     case Status.State.RUNNING: {
-//       state = githubState.Pending;
-//       description = 'The operation is currently running';
-//       break;
-//     }
-//     case Status.State.SUCCESS: {
-//       state = githubState.Success;
-//       description = 'The operation was successful';
-//       break;
-//     }
-//   }
+  switch (status) {
+    case githubState.Error: {
+      state = githubState.Error;
+      description = 'An error occurred';
+      break;
+    }
+    case githubState.Pending: {
+      state = githubState.Pending;
+      description = 'The current state of the operation is not known';
+      break;
+    }
+    case githubState.Success: {
+      state = githubState.Success;
+      description = 'The operation was successful';
+      break;
+    }
+  }
 
-//   await ctx.octokit.request('POST /repos/:owner/:repo/statuses/:sha', {
-//     owner: ctx.context.repo.owner,
-//     repo: ctx.context.repo.repo,
-//     sha,
-//     state,
-//     description,
-//   });
-// }
+  try {
+    await ctx.octokit.request('POST /repos/:owner/:repo/statuses/:sha', {
+      owner: ctx.context.repo.owner,
+      repo: ctx.context.repo.repo,
+      sha,
+      state,
+      url,
+    });
+  } catch (e) {
+    throw new Error(`failed to create deployment ${e}`);
+  }
+}
+
+async function createDeployment(ctx: Ctx, sha: string): Promise<void> {
+  try {
+    await ctx.octokit.request('POST /repos/:owner/:repo/deployments', {
+      owner: ctx.context.repo.owner,
+      repo: ctx.context.repo.repo,
+      ref: sha,
+      environment: ctx.workspace,
+    });
+  } catch (e) {
+    throw new Error(`failed to create deployment ${e}`);
+  }
+}
 
 // async function updateDeployStatusForRun(ctx: Ctx, workspace: string): Promise<boolean> {
 //   // Get the deployment from Waypoint using the git sha label to identify it
@@ -150,6 +158,9 @@ export async function initWaypoint(ctx: Ctx): Promise<void> {
 export async function handleBuild(ctx: Ctx, payload: EventPayloads.WebhookPayloadPush): Promise<void> {
   const waypointOptions = await getCliOptions(ctx, payload);
 
+  // Set status to pending
+  await updateCommitStatus(ctx, payload.after, githubState.Pending);
+
   // Run init
   await initWaypoint(ctx);
 
@@ -160,12 +171,20 @@ export async function handleBuild(ctx: Ctx, payload: EventPayloads.WebhookPayloa
       throw new Error(`build failed with exit code ${buildCode}`);
     }
   } catch (e) {
+    // Set status to error
+    await updateCommitStatus(ctx, payload.after, githubState.Error);
     throw new Error(`build failed: ${e}`);
   }
+
+  // Set status to success
+  await updateCommitStatus(ctx, payload.after, githubState.Success);
 }
 
 export async function handleDeploy(ctx: Ctx, payload: EventPayloads.WebhookPayloadPush): Promise<void> {
   const waypointOptions = await getCliOptions(ctx, payload);
+
+  // Set status to pending
+  await updateCommitStatus(ctx, payload.after, githubState.Pending);
 
   // Run init
   await initWaypoint(ctx);
@@ -177,8 +196,25 @@ export async function handleDeploy(ctx: Ctx, payload: EventPayloads.WebhookPaylo
       throw new Error(`deploy failed with exit code ${buildCode}`);
     }
   } catch (e) {
+    await updateCommitStatus(ctx, payload.after, githubState.Error);
     throw new Error(`deploy failed: ${e}`);
   }
+
+  const options: ExecOptions = { silent: true, failOnStdErr: true };
+  options.listeners = {
+    stdout: (data: Buffer) => {
+      process.stdout.write(data);
+    },
+    stderr: (data: Buffer) => {
+      process.stderr.write(data);
+    },
+  };
+
+  // Update the commit status
+  await updateCommitStatus(ctx, payload.after, githubState.Success);
+
+  // Create a github deployment
+  await createDeployment(ctx, payload.after);
 
   // Run the deploy, we want to do this async and wait for the remote status
   // exec('waypoint', ['deploy', ...waypointOptions]).then((code) => {
