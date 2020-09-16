@@ -4,7 +4,6 @@ import { Context } from '@actions/github/lib/context';
 import { getOctokit, context } from '@actions/github';
 import { Octokit } from '@octokit/core';
 import { CallCredentials, ChannelCredentials, Metadata } from '@grpc/grpc-js';
-import { throws } from 'assert';
 
 const DEFAULT_WORKSPACE = 'default';
 
@@ -17,6 +16,9 @@ export class Ctx {
 
   // The workspace for waypoint operations
   workspace: string;
+
+  // The operation we're running
+  operation: string;
 
   waypointToken: string;
   waypointAddress: string;
@@ -31,6 +33,7 @@ export class Ctx {
     this.github_token = githubToken;
     this.octokit = getOctokit(githubToken);
     this.context = context;
+    this.operation = core.getInput('operation');
 
     this.waypointToken =
       process.env.WAYPOINT_SERVER_TOKEN || core.getInput('waypoint_server_token', { required: true });
@@ -42,7 +45,6 @@ export class Ctx {
     core.exportVariable('WAYPOINT_SERVER_ADDR', this.waypointAddress);
     core.exportVariable('WAYPOINT_SERVER_TLS', '1');
     core.exportVariable('WAYPOINT_SERVER_TLS_SKIP_VERIFY', '1');
-    core.exportVariable('WAYPOINT_LOG_LEVEL', 'info');
 
     // Ensure the Waypoint token is masked from logs
     core.setSecret(this.waypointToken);
@@ -111,6 +113,8 @@ ${statusError}`
 }
 
 export async function createContextConfig(ctx: Ctx): Promise<void> {
+  core.info('creating Waypoint context configuration');
+
   const contextCode = await exec('waypoint', [
     'context',
     'create',
