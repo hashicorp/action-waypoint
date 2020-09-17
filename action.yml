@@ -1,0 +1,29 @@
+name: 'action-waypoint'
+description: 'Provide a description here'
+author: 'Your name or organization here'
+inputs:
+  version:
+    required: true
+    description: 'The version of Waypoint to install'
+  github_token:
+    description: 'GitHub token'
+    default: 'A GitHub token with permissions to update commit statuses and deployments'
+  waypoint_server_token:
+    description: 'The token for the Waypoint server'
+    default: ''
+  waypoint_server_address:
+    description: 'The grpc address of the Waypoint server'
+    default: ''
+  waypoint_server_ui:
+    description: 'The UI HTTP address of the Waypoint server'
+    default: ''
+  workspace:
+    description: 'The Waypoint workspace'
+    default: 'default'
+  project:
+    description: 'The Waypoint project'
+  operation:
+    description: 'input description here'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'

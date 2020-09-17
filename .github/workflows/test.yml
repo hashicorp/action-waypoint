@@ -1,0 +1,39 @@
+name: 'deploy'
+on: push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: |
+          npm install
+      - run: |
+          npm run all
+      - uses: ./
+        name: Setup
+        with:
+          version: '0.0.1-beta1'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          waypoint_server_address: '2.tcp.ngrok.io:17860'
+          waypoint_server_ui: 'https://localhost:9702'
+          waypoint_server_token: ${{ secrets.WAYPOINT_SERVER_TOKEN }}
+      - uses: ./
+        name: Build
+        with:
+          operation: build
+          version: '0.0.1-beta1'
+          workspace: default
+      - uses: ./
+        name: Deploy
+        with:
+          operation: deploy
+          version: '0.0.1-beta1'
+          workspace: default
+      - uses: ./
+        name: Release
+        if: ${{ github.ref == 'refs/heads/master' }}
+        with:
+          operation: release
+          version: '0.0.1-beta1'
+          workspace: default
