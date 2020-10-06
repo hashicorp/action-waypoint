@@ -1,5 +1,5 @@
 {
-  "ref": "refs/heads/master",
+  "ref": "refs/heads/main",
   "before": "1d42aab6ef030d484135ec6bcbf0b976079ab785",
   "after": "265283d6a318ff52e707dd80398ac80fd8343ac3",
   "repository": {
@@ -102,9 +102,9 @@
     "forks": 0,
     "open_issues": 0,
     "watchers": 0,
-    "default_branch": "master",
+    "default_branch": "main",
     "stargazers": 0,
-    "master_branch": "master",
+    "main_branch": "main",
     "organization": "hashicorp"
   },
   "pusher": {
