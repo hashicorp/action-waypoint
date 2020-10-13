@@ -1,5 +1,8 @@
 # action-waypoint
 
+**Note: This is an experiment and isn't recommended for consistent usage. For anything beyond
+experimental, we recommend using [action-setup-waypoint](https://github.com/hashicorp/action-setup-waypoint).**
+
 This action provides an abstraction for working with Waypoint
 and the GitHub releases and commit statuses APIs. It is
 intended to be the easiest way to automatically deploy
@@ -25,21 +28,21 @@ steps:
       waypoint_server_ui: 'https://waypoint.example.com:9702'
       waypoint_server_token: ${{ secrets.WAYPOINT_SERVER_TOKEN }}
       workspace: default
-  - uses: ./.github/actions/action-waypoint
+  - uses: hashicorp/action-waypoint
     name: Build
     with:
       operation: build
       version: '0.0.1-beta1'
       github_token: ${{ secrets.GITHUB_TOKEN }}
       workspace: default
-  - uses: ./.github/actions/action-waypoint
+  - uses: hashicorp/action-waypoint
     name: Deploy
     with:
       operation: deploy
       version: '0.0.1-beta1'
       github_token: ${{ secrets.GITHUB_TOKEN }}
       workspace: default
-  - uses: ./.github/actions/action-waypoint
+  - uses: hashicorp/action-waypoint
     name: Release
     if: ${{ github.ref == 'refs/heads/master' }}
     with:
