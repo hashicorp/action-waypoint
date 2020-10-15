@@ -4,8 +4,7 @@ import * as semver from 'semver';
 import * as httpm from '@actions/http-client';
 import os from 'os';
 
-const DEFAULT_RELEASES_URL =
-  'http://ihngtake2gyn8nbyfgtgvu449dnsbrgopvukjdbntyndmlv7tb.s3-website-us-east-1.amazonaws.com';
+const DEFAULT_RELEASES_URL = 'https://releases.hashicorp.com';
 
 interface Build {
   arch: string;
