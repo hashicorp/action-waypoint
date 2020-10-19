@@ -44,7 +44,7 @@ steps:
       workspace: default
   - uses: hashicorp/action-waypoint
     name: Release
-    if: ${{ github.ref == 'refs/heads/master' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     with:
       operation: release
       version: '0.0.1-beta1'
