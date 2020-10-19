@@ -104,7 +104,7 @@
     "watchers": 0,
     "default_branch": "main",
     "stargazers": 0,
-    "main_branch": "main",
+    "master_branch": "main",
     "organization": "hashicorp"
   },
   "pusher": {
