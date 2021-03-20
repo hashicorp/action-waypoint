@@ -10,30 +10,39 @@ jobs:
           npm install
       - run: |
           npm run all
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: ${{ secrets.ACTIONS_ALLOW_UNSECURE_COMMANDS }} 
       - uses: ./
         name: Setup
         with:
-          version: '0.0.1-beta1'
+          version: '0.2.4'
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          waypoint_server_address: '2.tcp.ngrok.io:17860'
-          waypoint_server_ui: 'https://localhost:9702'
+          waypoint_server_address: ${{ secrets.WAYPOINT_SERVER_ADDRESS }}
+          waypoint_server_ui: ${{ secrets.WAYPOINT_SERVER_UI }}
           waypoint_server_token: ${{ secrets.WAYPOINT_SERVER_TOKEN }}
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: ${{ secrets.ACTIONS_ALLOW_UNSECURE_COMMANDS }}
       - uses: ./
         name: Build
         with:
           operation: build
-          version: '0.0.1-beta1'
+          version: '0.2.4'
           workspace: default
+          waypoint_server_address: ${{ secrets.WAYPOINT_SERVER_ADDRESS }}
+          waypoint_server_ui: ${{ secrets.WAYPOINT_SERVER_UI }}
+          waypoint_server_token: ${{ secrets.WAYPOINT_SERVER_TOKEN }}
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: ${{ secrets.ACTIONS_ALLOW_UNSECURE_COMMANDS }}
       - uses: ./
         name: Deploy
         with:
           operation: deploy
-          version: '0.0.1-beta1'
+          version: '0.2.4'
           workspace: default
       - uses: ./
         name: Release
-        if: ${{ github.ref == 'refs/heads/master' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         with:
           operation: release
-          version: '0.0.1-beta1'
+          version: '0.2.4'
           workspace: default
