@@ -31,7 +31,7 @@
     "@actions/io": "^1.0.2",
     "@actions/tool-cache": "^1.6.0",
     "@grpc/grpc-js": "^1.1.6",
-    "@octokit/webhooks": "^7.11.2",
+    "@octokit/webhooks": "^8.12.3",
     "@types/semver": "^7.3.3",
     "api-common-protos": "file:../api-common-protos",
     "nock": "^13.0.4",
